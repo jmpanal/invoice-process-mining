@@ -1,6 +1,7 @@
 export type TabKey =
   | 'Landing'
   | 'BPM Model'
+  | 'Generate Your Own Process'
   | 'Generate Real Data'
   | 'Mine Process'
   | 'SOPs'
@@ -36,6 +37,30 @@ export type ProcessEdge = {
   is_bottleneck?: boolean;
   frequency?: number;
   avg_wait_hours?: number;
+};
+
+export type CustomGraphNode = {
+  id: string;
+  title: string;
+  kind: string;
+  lane: string;
+  description: string;
+};
+
+export type CustomGraphEdge = {
+  id: string;
+  source: string;
+  target: string;
+  label: string;
+  type: string;
+};
+
+export type CustomProcessGraph = {
+  title: string;
+  summary: string;
+  assumptions: string[];
+  nodes: CustomGraphNode[];
+  edges: CustomGraphEdge[];
 };
 
 export type IdealProcess = {

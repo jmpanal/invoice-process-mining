@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { apiGet, apiPost, API_URL } from './api/client';
+import BeautifulProcessGraph from './components/BeautifulProcessGraph';
 import BpmnProcessView from './components/BpmnProcessView';
 import GraphView from './components/GraphView';
-import { AgentRun, DocumentSummary, EventLog, IdealProcess, ImprovementAction, MiningRun, Proposal, RagChunk, TabKey } from './types';
+import { AgentRun, CustomProcessGraph, DocumentSummary, EventLog, IdealProcess, ImprovementAction, MiningRun, Proposal, RagChunk, TabKey } from './types';
 
 const TABS: TabKey[] = [
   'Landing',
   'BPM Model',
+  'Generate Your Own Process',
   'Generate Real Data',
   'Mine Process',
   'SOPs',
@@ -52,6 +54,8 @@ export default function App() {
   const [actions, setActions] = useState<ImprovementAction[]>([]);
   const [agentRuns, setAgentRuns] = useState<AgentRun[]>([]);
   const [selectedRun, setSelectedRun] = useState<AgentRun | null>(null);
+  const [customProcessDescription, setCustomProcessDescription] = useState('Employee onboarding for a remote software engineer');
+  const [customProcessGraph, setCustomProcessGraph] = useState<CustomProcessGraph | null>(null);
 
   const selectedLog = eventLogs.find((log) => log.id === selectedLogId);
   const latestMiningId = miningRun?.id || miningRuns[0]?.id || '';
@@ -213,6 +217,11 @@ export default function App() {
     }
   }
 
+  async function generateCustomProcess() {
+    const result = await runTask('custom-process', () => apiPost<CustomProcessGraph>('/custom-process/generate', { description: customProcessDescription }));
+    if (result) setCustomProcessGraph(result);
+  }
+
   function selectTab(tab: TabKey) {
     setActiveTab(tab);
     window.history.replaceState(null, '', `#${encodeURIComponent(tab)}`);
@@ -224,6 +233,15 @@ export default function App() {
         return <Landing onDefaults={() => void generateEvents(true)} />;
       case 'BPM Model':
         return <BpmPage process={idealProcess?.nodes?.length ? idealProcess : null} onGenerate={() => void generateIdealProcess()} />;
+      case 'Generate Your Own Process':
+        return (
+          <CustomProcessPage
+            description={customProcessDescription}
+            graph={customProcessGraph}
+            onDescription={setCustomProcessDescription}
+            onGenerate={() => void generateCustomProcess()}
+          />
+        );
       case 'Generate Real Data':
         return (
           <DataPage
@@ -298,6 +316,8 @@ export default function App() {
     sops,
     agentRuns,
     approvedActions,
+    customProcessDescription,
+    customProcessGraph,
     selectedRun,
   ]);
 
@@ -431,6 +451,54 @@ function BpmPage({ process, onGenerate }: { process: IdealProcess | null; onGene
         </>
       ) : (
         <EmptyState text="Generate the canonical invoice process first." />
+      )}
+    </section>
+  );
+}
+
+function CustomProcessPage(props: {
+  description: string;
+  graph: CustomProcessGraph | null;
+  onDescription: (value: string) => void;
+  onGenerate: () => void;
+}) {
+  return (
+    <section className="space-y-4">
+      <PageTitle
+        title="Generate Your Own Process"
+        text="Describe any process at a high level or in detail. The generator expands high-level requests into likely operational steps and renders an editable n8n-style graph."
+      />
+      <div className="panel p-4">
+        <label className="text-sm font-semibold">
+          Process description
+          <textarea
+            className="mt-2 min-h-[130px] w-full border border-neutral-300 px-3 py-2 text-sm"
+            value={props.description}
+            onChange={(event) => props.onDescription(event.target.value)}
+            placeholder="Example: Customer refund handling for an ecommerce company with fraud checks and finance approval."
+          />
+        </label>
+        <div className="mt-3 flex justify-end">
+          <button className="border border-neutral-950 bg-neutral-950 px-4 py-2 text-white" onClick={props.onGenerate}>
+            Generate
+          </button>
+        </div>
+      </div>
+      {props.graph ? (
+        <>
+          {props.graph.assumptions.length ? (
+            <Panel title="Assumptions">
+              <ul className="space-y-1">
+                {props.graph.assumptions.map((assumption, index) => (
+                  <li key={index}>{assumption}</li>
+                ))}
+              </ul>
+            </Panel>
+          ) : null}
+          <BeautifulProcessGraph graph={props.graph} />
+        </>
+      ) : (
+        <EmptyState text="Enter a process description and generate a graph." />
       )}
     </section>
   );

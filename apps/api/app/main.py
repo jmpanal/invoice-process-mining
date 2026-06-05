@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.db import models, repositories
 from app.db.session import Base, engine, get_session
 from app.services.agents import mock_agent
-from app.services.ai import analysis_service, improvement_service
+from app.services.ai import analysis_service, custom_process_service, improvement_service
 from app.services.ai.openai_client import OpenAIConfigurationError, OpenAIRateLimitError, OpenAIServiceError
 from app.services.bpm import invoice_bpm_generator
 from app.services.data_generation import invoice_event_generator
@@ -63,6 +63,10 @@ class RagSearchRequest(BaseModel):
 class AnalyzeRequest(BaseModel):
     question: str
     mining_run_id: str | None = None
+
+
+class CustomProcessRequest(BaseModel):
+    description: str = Field(min_length=10, max_length=4000)
 
 
 class ImprovementRequest(BaseModel):
@@ -216,6 +220,11 @@ def rag_chunks(
 @app.post("/ai/analyze")
 def ai_analyze(request: AnalyzeRequest, session: Session = Depends(get_session)) -> dict[str, Any]:
     return analysis_service.analyze(session, request.question, request.mining_run_id)
+
+
+@app.post("/custom-process/generate")
+def generate_custom_process(request: CustomProcessRequest) -> dict[str, Any]:
+    return custom_process_service.generate_process_graph(request.description)
 
 
 @app.post("/improvements/generate")

@@ -12,6 +12,7 @@
     "@dagrejs/dagre": "^3.0.0",
     "@vitejs/plugin-react": "^5.0.0",
     "bpmn-js": "^18.17.1",
+    "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "reactflow": "^11.11.4",
