@@ -123,3 +123,89 @@ When you care about a specific result, start by checking the source files in the
 The most important signs are delays, repeated reviews, missing purchase orders, duplicate invoice checks, approval thresholds, rejected invoices, and payment blocks. These are the places where invoice processes usually slow down or create control risk.
 
 The app is most useful when you compare screens instead of reading one screen alone. The BPM Model shows the intended process, Mine Process shows what happened, SOPs and Policies show what the organization says should happen, and AI Analysis explains the connection between them.
+
+## Run Locally
+
+You need Docker Desktop, Python 3.12 or newer, and Node.js 20.19+ or 22.12+. Docker is used for PostgreSQL with pgvector. The API and web app run on your computer.
+
+Clone the repo:
+
+```bash
+git clone https://github.com/jmpanal/invoice-process-mining.git
+cd invoice-process-mining
+```
+
+Create local environment config:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+On macOS or Linux:
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and set `OPENAI_API_KEY` if you want RAG, AI analysis, improvement generation, and custom process generation to work. The app opens without a key, but those AI actions return an OpenAI configuration error.
+
+Start the database from the repo root:
+
+```bash
+docker compose up -d
+docker compose ps
+```
+
+Start the API in a second terminal:
+
+```powershell
+cd apps/api
+py -3.12 -m venv .venv
+.\.venv\Scripts\python -m pip install --upgrade pip
+.\.venv\Scripts\python -m pip install -e ".[dev]"
+.\.venv\Scripts\python -m alembic upgrade head
+.\.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8010 --reload
+```
+
+On macOS or Linux:
+
+```bash
+cd apps/api
+python3.12 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -e ".[dev]"
+.venv/bin/python -m alembic upgrade head
+.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8010 --reload
+```
+
+Start the web app in a third terminal:
+
+```bash
+cd apps/web
+npm ci
+npm run dev
+```
+
+Open `http://localhost:5173`. The web app calls the API at `http://127.0.0.1:8010` by default.
+
+Useful checks:
+
+```bash
+curl http://127.0.0.1:8010/health
+curl http://127.0.0.1:8010/health/db
+```
+
+First app flow:
+
+1. Open the BPM Model tab and generate the ideal invoice process.
+2. Open Generate Real Data and create demo invoice events.
+3. Open Mine Process and run mining.
+4. Open RAG Index and rebuild the index. This step needs `OPENAI_API_KEY`.
+5. Use AI Analysis, Improve Process, and Agents after the earlier data exists.
+
+Known local setup notes:
+
+- `docker-compose.yml` starts only PostgreSQL with pgvector. It does not start the API or frontend.
+- `alembic upgrade head` is required for PostgreSQL. Without it, the API can connect but the app tables will not exist.
+- Keep `DATABASE_URL` pointed at `localhost:55432` unless you change the Docker Compose port.
+- If port `8010` is busy, start the API on another port and set `VITE_API_BASE_URL` for the web app.
