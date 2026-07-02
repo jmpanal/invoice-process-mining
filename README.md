@@ -18,6 +18,37 @@ Run the database with Docker Compose, then start the API from `apps/api` and the
 
 The database uses PostgreSQL with pgvector so the app can store chunks and embeddings. The AI features need `OPENAI_API_KEY` in your local environment. If the key is missing or the account has no available quota, the app still opens, but AI actions such as RAG answers, improvement generation, and custom process generation will return an error.
 
+## Technology Stack And Architecture
+
+![Local architecture diagram](docs/architecture.png)
+
+The project is a local full-stack demo. Docker runs the database. The API and web app run directly on your computer so you can edit and restart them quickly while developing.
+
+The frontend is a React app built with Vite, TypeScript, Tailwind CSS, React Flow, and bpmn-js. It runs at `http://localhost:5173` and gives you the screens for the BPM model, generated event data, process mining, SOPs, policies, RAG, AI analysis, improvement proposals, and mock agents. The frontend does not talk to the database directly. It calls the API at `http://127.0.0.1:8010`.
+
+The backend is a FastAPI app in `apps/api`. It owns the business workflow, database access, document ingestion, process mining, AI calls, and mock agent execution. SQLAlchemy handles database access, Alembic handles schema migrations, pandas and PM4Py handle process mining, and the OpenAI Python SDK handles embeddings and chat calls.
+
+The database is PostgreSQL 16 with pgvector, started by `docker-compose.yml` on local port `55432`. PostgreSQL stores generated processes, event logs, mined process results, document chunks, embedding vectors, RAG queries, improvement proposals, approved actions, agent runs, and mock system configuration output. pgvector is used because RAG needs vector storage for document embeddings.
+
+Alembic creates the PostgreSQL schema before the app is used. This matters because Docker only starts an empty PostgreSQL container. The command `alembic upgrade head` creates the tables and enables the vector extension through the migrations.
+
+The RAG source material lives as markdown files under `docs/sop-repository` and `docs/policy-repository`. When you rebuild the RAG index, the API reads those files, splits them into chunks, sends the chunks to OpenAI for embeddings, and stores the chunks plus vectors in PostgreSQL. Later AI questions search those stored chunks first, then send the relevant context to OpenAI chat.
+
+Process mining starts with generated invoice event logs. The API creates demo invoice activity with cases, timestamps, invoice metadata, exceptions, hidden steps, and bottlenecks. PM4Py analyzes that event log and returns mined process variants, direct-follows graphs, bottlenecks, and hidden issues. The frontend renders those results so you can compare the ideal BPM process with the actual generated activity.
+
+The agents screen uses mock enterprise systems only. Approved improvement actions can produce mock configuration JSON and audit trail records, but the app never calls real SAP, Coupa, ServiceNow, payment, banking, email, or ticketing APIs. This keeps the project safe for a public local demo.
+
+Local runtime flow:
+
+1. Browser opens the Vite app at `localhost:5173`.
+2. React calls FastAPI endpoints at `127.0.0.1:8010`.
+3. FastAPI reads or writes PostgreSQL data through SQLAlchemy.
+4. PostgreSQL runs in Docker at `localhost:55432`.
+5. SOP and policy markdown files feed the RAG index.
+6. OpenAI provides embeddings and chat responses when `OPENAI_API_KEY` is configured.
+7. PM4Py mines generated event logs inside the API process.
+8. Mock agents simulate approved enterprise-system actions and store the audit trail.
+
 ## Three Minute Walkthrough
 
 Start on the landing screen and use it as your orientation point. Then open the BPM Model tab to see the clean process the business wants to follow. After that, generate real data, mine the process, review SOPs and policies, rebuild the RAG index, ask an AI question, review improvement proposals, and finally try the agents screen.
